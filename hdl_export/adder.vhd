@@ -2,7 +2,7 @@
 -- Project : MIPSim
 -- File    : adder.vhd
 -- Description: This file defines a generic adder component named 'adder'.
--- The adder performs addition of two input vectors 'a' and 'b'. The size of
+-- The adder performs addition of two input vectors 'v1' and 'v2'. The size of
 -- the input and output vectors is configurable using a generic parameter.
 --------------------------------------------------------------------------------
 
@@ -16,14 +16,13 @@ ENTITY adder IS
         VECTOR_SIZE : INTEGER := 32 -- Generic parameter for the size of input and output vectors
     );
     PORT (
-        a, b : IN STD_LOGIC_VECTOR(VECTOR_SIZE - 1 DOWNTO 0); -- Input vectors for addition
-        y : OUT STD_LOGIC_VECTOR(VECTOR_SIZE - 1 DOWNTO 0) -- Output vector for the sum
+        v1, v2 : IN STD_LOGIC_VECTOR(VECTOR_SIZE - 1 DOWNTO 0); -- Input vectors for addition
+        vr : OUT STD_LOGIC_VECTOR(VECTOR_SIZE - 1 DOWNTO 0) -- Output vector for the sum
     );
 END adder;
 
 -- Architecture of adder
 ARCHITECTURE behave OF adder IS
 BEGIN
-    -- Process for adding two vectors
-    y <= a + b; -- Perform addition operation
+    vr <= v1 + v2; -- Perform addition operation
 END behave;

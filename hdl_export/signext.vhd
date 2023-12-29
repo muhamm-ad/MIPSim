@@ -11,10 +11,9 @@ USE IEEE.STD_LOGIC_1164.ALL;
 
 -- Entity declaration of signext (sign extender)
 ENTITY signext IS
-    -- Sign extender takes a 16-bit input and extends it to a 32-bit output
     PORT (
-        a : IN STD_LOGIC_VECTOR(15 DOWNTO 0); -- 16-bit input
-        y : OUT STD_LOGIC_VECTOR(31 DOWNTO 0) -- 32-bit sign-extended output
+        data_in : IN STD_LOGIC_VECTOR(15 DOWNTO 0); -- 16-bit input
+        data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0) -- 32-bit sign-extended output
     );
 END signext;
 
@@ -22,7 +21,7 @@ END signext;
 ARCHITECTURE behave OF signext IS
 BEGIN
     -- Sign extension process
-    y <= X"0000" & a WHEN a(15) = '0' ELSE X"ffff" & a;
-    -- If the most significant bit (MSB) of 'a' is '0', pad with '0's (positive number).
+    data_out <= X"0000" & data_in WHEN data_in(15) = '0' ELSE X"ffff" & data_in;
+    -- If the most significant bit (MSB) of 'data_in' is '0', pad with '0's (positive number).
     -- If the MSB is '1', pad with '1's (negative number, sign extension).
 END behave;

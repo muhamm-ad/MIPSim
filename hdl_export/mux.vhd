@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- Project : Generic Components
+-- Project : MIPSim
 -- File    : mux.vhd
 -- Description: This file defines a generic multiplexer component named 'mux'.
 -- The multiplexer selects one of the 'N' input signals based on the select line
@@ -20,7 +20,7 @@ ENTITY mux IS
     );
     PORT (
         data_in : IN STD_LOGIC_VECTOR(N_INPUTS * DATA_WIDTH - 1 DOWNTO 0); -- Concatenated input data lines
-        SELECT : IN STD_LOGIC_VECTOR(INTEGER'ceil(log2(real(N_INPUTS))) - 1 DOWNTO 0); -- Select line
+        select_ : IN STD_LOGIC_VECTOR(INTEGER'ceil(log2(real(N_INPUTS))) - 1 DOWNTO 0); -- Select line
         data_out : OUT STD_LOGIC_VECTOR(DATA_WIDTH - 1 DOWNTO 0) -- Output data line
     );
 END mux;
@@ -29,10 +29,10 @@ END mux;
 ARCHITECTURE behave OF mux IS
 BEGIN
     -- Process for multiplexing the input data based on the select line
-    PROCESS (data_in, SELECT)
+    PROCESS (data_in, select_)
         VARIABLE selected_index : INTEGER;
     BEGIN
-        selected_index := TO_INTEGER(unsigned(SELECT)) * DATA_WIDTH;
+        selected_index := TO_INTEGER(unsigned(select_)) * DATA_WIDTH;
         data_out <= data_in(selected_index + DATA_WIDTH - 1 DOWNTO selected_index);
     END PROCESS;
 END behave;

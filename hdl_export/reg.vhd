@@ -18,7 +18,7 @@ ENTITY reg IS
     PORT (
         clk : IN STD_LOGIC; -- Clock input
         we3 : IN STD_LOGIC; -- Write enable for the third port
-        ra1, ra2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0); -- Read address for ports 1 and 2
+        a1, a2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0); -- Read address for ports 1 and 2
         wa3 : IN STD_LOGIC_VECTOR(4 DOWNTO 0); -- Write address for port 3
         wd3 : IN STD_LOGIC_VECTOR(31 DOWNTO 0); -- Write data for port 3
         rd1, rd2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0) -- Read data from ports 1 and 2
@@ -41,9 +41,9 @@ BEGIN
     END PROCESS;
 
     -- Read operations for ports 1 and 2 are combinational
-    rd1 <= X"00000000" WHEN ra1 = "00000" ELSE
-        mem(TO_INTEGER(unsigned(ra1))); -- Output zero or the register data based on the read address
+    rd1 <= X"00000000" WHEN a1 = "00000" ELSE
+        mem(TO_INTEGER(unsigned(a1))); -- Output zero or the register data based on the read address
 
-    rd2 <= X"00000000" WHEN ra2 = "00000" ELSE
-        mem(TO_INTEGER(unsigned(ra2))); -- Output zero or the register data based on the read address
+    rd2 <= X"00000000" WHEN a2 = "00000" ELSE
+        mem(TO_INTEGER(unsigned(a2))); -- Output zero or the register data based on the read address
 END behave;
