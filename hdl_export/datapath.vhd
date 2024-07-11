@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- Project : MIPS Processor
+-- Project : MIPSim
 -- File    : datapath.vhd
 -- Description: This file defines the MIPS processor datapath entity 'datapath'.
 -- It integrates various components such as the program counter (PC), registers,
@@ -26,8 +26,8 @@ ENTITY datapath IS
         alucontrol : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
         aluresult : BUFFER STD_LOGIC_VECTOR (31 DOWNTO 0);
         readdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-        memtoreg : IN STD_LOGIC
-        zero : OUT STD_LOGIC;
+        memtoreg : IN STD_LOGIC;
+        zero : OUT STD_LOGIC
     );
 END;
 
@@ -57,7 +57,7 @@ BEGIN
             we3 => regwrite,
             a1 => instr(25 DOWNTO 21),
             a2 => instr(20 DOWNTO 16),
-            wa3 => writereg,
+            a3 => writereg,
             wd3 => result,
             rd1 => srca,
             rd2 => writedata

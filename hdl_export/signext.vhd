@@ -21,7 +21,8 @@ END signext;
 ARCHITECTURE behave OF signext IS
 BEGIN
     -- Sign extension process
-    data_out <= X"0000" & data_in WHEN data_in(15) = '0' ELSE X"ffff" & data_in;
+    data_out <= X"0000" & data_in WHEN data_in(15) = '0' ELSE
+        X"ffff" & data_in;
     -- If the most significant bit (MSB) of 'data_in' is '0', pad with '0's (positive number).
     -- If the MSB is '1', pad with '1's (negative number, sign extension).
 END behave;

@@ -9,40 +9,39 @@
 -- TODO Adjust the memory allocation according to the MIPS architecture.
 --------------------------------------------------------------------------------
 
-library IEEE;
-use IEEE.STD_LOGIC_1164.all;
-use IEEE.NUMERIC_STD.all;
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.NUMERIC_STD.ALL;
 
 -- Entity declaration of dmem (data memory)
-entity dmem is
+ENTITY dmem IS
     GENERIC (
         MEM_SIZE : INTEGER := 64 -- Generic parameter for memory size, default is 64 locations
     );
-    port(
-        clk, we : in STD_LOGIC; -- Clock and write enable signals
-        a : in STD_LOGIC_VECTOR(31 downto 0); -- Address input (32-bit)
-        wd : in STD_LOGIC_VECTOR(31 downto 0); -- Write data input (32-bit)
-        rd : out STD_LOGIC_VECTOR(31 downto 0) -- Read data output (32-bit)
+    PORT (
+        clk, we : IN STD_LOGIC; -- Clock and write enable signals
+        a : IN STD_LOGIC_VECTOR(31 DOWNTO 0); -- Address input (32-bit)
+        wd : IN STD_LOGIC_VECTOR(31 DOWNTO 0); -- Write data input (32-bit)
+        rd : OUT STD_LOGIC_VECTOR(31 DOWNTO 0) -- Read data output (32-bit)
     );
-end dmem;
+END dmem;
 
 -- Architecture of dmem
-architecture behave of dmem is
+ARCHITECTURE behave OF dmem IS
     -- Define the memory type based on the generic parameter MEM_SIZE
-    type ramtype is array(MEM_SIZE - 1 downto 0) of STD_LOGIC_VECTOR(31 downto 0);
-    signal mem : ramtype := (others => (others => '0')); -- Initialize memory to zeros
-begin
-    -- Process for handling memory operations
-    process(clk, a)
-    begin
+    TYPE ramtype IS ARRAY(MEM_SIZE - 1 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL mem : ramtype := (OTHERS => (OTHERS => '0')); -- Initialize memory to zeros
+BEGIN
+    PROCESS (clk, a)
+    BEGIN
         -- Synchronous write operation
-        if rising_edge(clk) then
-            if we = '1' and TO_INTEGER(unsigned(a)) < MEM_SIZE then 
+        IF rising_edge(clk) THEN
+            IF we = '1' AND TO_INTEGER(unsigned(a)) < MEM_SIZE THEN
                 mem(TO_INTEGER(unsigned(a))) := wd; -- Write data to memory if within bounds
-            end if;
-        end if;
+            END IF;
+        END IF;
         -- Combinational read operation
-        rd <= mem(TO_INTEGER(unsigned(a))) when TO_INTEGER(unsigned(a)) < MEM_SIZE else (others => '0'); -- Read data or return zeros if address is out of bounds
-    end process;
-end behave;
-end behave;
+        rd <= mem(TO_INTEGER(unsigned(a))) WHEN TO_INTEGER(unsigned(a)) < MEM_SIZE ELSE
+            (OTHERS => '0'); -- Read data or return zeros if address is out of bounds
+    END PROCESS;
+END behave;

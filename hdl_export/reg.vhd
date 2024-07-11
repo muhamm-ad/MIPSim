@@ -19,7 +19,7 @@ ENTITY reg IS
         clk : IN STD_LOGIC; -- Clock input
         we3 : IN STD_LOGIC; -- Write enable for the third port
         a1, a2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0); -- Read address for ports 1 and 2
-        wa3 : IN STD_LOGIC_VECTOR(4 DOWNTO 0); -- Write address for port 3
+        a3 : IN STD_LOGIC_VECTOR(4 DOWNTO 0); -- Write address for port 3
         wd3 : IN STD_LOGIC_VECTOR(31 DOWNTO 0); -- Write data for port 3
         rd1, rd2 : OUT STD_LOGIC_VECTOR(31 DOWNTO 0) -- Read data from ports 1 and 2
     );
@@ -35,7 +35,7 @@ BEGIN
     PROCESS (clk) BEGIN
         IF rising_edge(clk) THEN -- Trigger on the rising edge of the clock
             IF we3 = '1' THEN
-                mem(TO_INTEGER(unsigned(wa3))) <= wd3; -- Write to the register when write enable is asserted
+                mem(TO_INTEGER(unsigned(a3))) <= wd3; -- Write to the register when write enable is asserted
             END IF;
         END IF;
     END PROCESS;

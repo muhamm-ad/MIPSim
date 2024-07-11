@@ -32,12 +32,12 @@ BEGIN
     -- Process to perform operations based on function code
     PROCESS (srca, srcb, aluctl, diff, tmp) BEGIN
         CASE aluctl IS
-            WHEN "0000" => tmp <= srca AND srcb; -- AND operation
-            WHEN "0001" => tmp <= srca OR srcb; -- OR operation
-            WHEN "0010" => tmp <= srca + srcb; -- Addition
-            WHEN "0100" => tmp <= srca AND (NOT srcb); -- NAND operation
-            WHEN "0101" => tmp <= srca OR (NOT srcb); -- NOR operation
-            WHEN "0110" => tmp <= diff; -- Subtraction
+            WHEN "0000" => tmp <= srca AND srcb; -- AND
+            WHEN "0001" => tmp <= srca OR srcb; -- OR
+            WHEN "0010" => tmp <= srca + srcb; -- ADD
+            WHEN "0100" => tmp <= srca AND (NOT srcb); -- NAND
+            WHEN "0101" => tmp <= srca OR (NOT srcb); -- NOR
+            WHEN "0110" => tmp <= diff; -- SUB
             WHEN "0111" => tmp <= X"0000000" & "000" & diff(DATA_WIDTH - 1); -- SLT
             WHEN OTHERS => tmp <= (OTHERS => '1'); -- Default case
         END CASE;
