@@ -14,20 +14,6 @@ MIPSim is a MIPS (Microprocessor without Interlocked Pipeline Stages) processor 
 * A VHDL environment (e.g., GHDL, ModelSim).
 * A text editor or IDE supporting VHDL.
 
-<!-- ## Installation
-
-1. Clone the repository: `git clone https://github.com/[YourUsername]/MIPSim.git`
-2. Open the project folder in your VHDL environment.
-3. Compile and run the VHDL files according to your environment's instructions.
-
-## Usage
-
-To run the MIPS simulation:
-
-1. Load the main VHDL file into your simulator.
-2. Execute the simulation using the provided testbenches.
-3. Analyze the results and outputs of the simulator to understand the behavior of the MIPS processor. -->
-
 ## Contributing
 
 Contributions are welcome, whether they are extensions, bug fixes, or improved documentation.
