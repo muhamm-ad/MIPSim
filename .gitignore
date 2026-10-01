@@ -1,0 +1,13 @@
+# GHDL / simulator artefacts
+build/
+*.cf
+*.o
+*.vcd
+*.ghw
+*.fst
+
+# Editor / OS
+.DS_Store
+*.swp
+.vscode/
+.idea/
