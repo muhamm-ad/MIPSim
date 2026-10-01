@@ -21,13 +21,22 @@ ARCHITECTURE sim OF tb_datapath IS
     SIGNAL reset : STD_LOGIC := '1';
     SIGNAL pc, instr, writedata, aluresult, readdata : STD_LOGIC_VECTOR(31 DOWNTO 0) := (OTHERS => '0');
     SIGNAL regdst, regwrite, alusrc, memtoreg, zero : STD_LOGIC := '0';
-    SIGNAL zeroext, pcsrc, jump : STD_LOGIC := '0';
+    SIGNAL pcsrc, jump : STD_LOGIC := '0';
+    SIGNAL extop : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
     SIGNAL alucontrol : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0010";
 
     CONSTANT ALU_AND : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0000";
     CONSTANT ALU_OR : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0001";
     CONSTANT ALU_ADD : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0010";
     CONSTANT ALU_SUB : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0110";
+    CONSTANT ALU_SLTU : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1000";
+    CONSTANT ALU_SLL : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1010";
+    CONSTANT ALU_SRL : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1011";
+    CONSTANT ALU_SRA : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1100";
+
+    CONSTANT EXT_SIGN : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
+    CONSTANT EXT_ZERO : STD_LOGIC_VECTOR(1 DOWNTO 0) := "01";
+    CONSTANT EXT_UPPER : STD_LOGIC_VECTOR(1 DOWNTO 0) := "10";
 
     FUNCTION w(i : INTEGER) RETURN STD_LOGIC_VECTOR IS
     BEGIN
@@ -40,7 +49,7 @@ BEGIN
         PORT MAP(
             clk => clk, reset => reset, pc => pc, instr => instr,
             regdst => regdst, regwrite => regwrite, writedata => writedata,
-            alusrc => alusrc, zeroext => zeroext, alucontrol => alucontrol, aluresult => aluresult,
+            alusrc => alusrc, extop => extop, alucontrol => alucontrol, aluresult => aluresult,
             readdata => readdata, memtoreg => memtoreg, pcsrc => pcsrc, jump => jump, zero => zero);
 
     PROCESS
@@ -54,7 +63,7 @@ BEGIN
         rd, rw, asrc, m2r : STD_LOGIC; ctl : STD_LOGIC_VECTOR(3 DOWNTO 0);
         mem_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
         want_alu : STD_LOGIC_VECTOR(31 DOWNTO 0);
-        zext : STD_LOGIC := '0'; psrc : STD_LOGIC := '0'; jmp : STD_LOGIC := '0';
+        ext : STD_LOGIC_VECTOR(1 DOWNTO 0) := EXT_SIGN; psrc : STD_LOGIC := '0'; jmp : STD_LOGIC := '0';
         next_pc : INTEGER := - 1) IS
         BEGIN
             ASSERT pc = w(exp_pc) REPORT name & ": pc expected " & to_hstring(w(exp_pc)) & " got " & to_hstring(pc) SEVERITY error;
@@ -65,7 +74,7 @@ BEGIN
             memtoreg <= m2r;
             alucontrol <= ctl;
             readdata <= mem_data;
-            zeroext <= zext;
+            extop <= ext;
             pcsrc <= psrc;
             jump <= jmp;
             WAIT FOR 2 ns;
@@ -121,10 +130,21 @@ BEGIN
         exec(X"00021822", "sub  $3,$0,$2  ", '1', '1', '0', '0', ALU_SUB, X"00000000", w(-5));
 
         -- Zero-extended immediates (zeroext = 1): ori 0xFFFF gives 0x0000FFFF, not 0xFFFFFFFF
-        exec(X"340BFFFF", "ori  $11,$0,FFFF", '0', '1', '1', '0', ALU_OR, X"00000000", X"0000FFFF", zext => '1');
-        exec(X"316C00FF", "andi $12,$11,00FF", '0', '1', '1', '0', ALU_AND, X"00000000", X"000000FF", zext => '1');
-        -- The same immediate is sign-extended when zeroext = 0
-        exec(X"340BFFFF", "ori  (sign-ext)  ", '0', '1', '1', '0', ALU_OR, X"00000000", X"FFFFFFFF", zext => '0');
+        exec(X"340BFFFF", "ori  $11,$0,FFFF", '0', '1', '1', '0', ALU_OR, X"00000000", X"0000FFFF", ext => EXT_ZERO);
+        exec(X"316C00FF", "andi $12,$11,00FF", '0', '1', '1', '0', ALU_AND, X"00000000", X"000000FF", ext => EXT_ZERO);
+        -- The same immediate is sign-extended when extop = 00
+        exec(X"340BFFFF", "ori  (sign-ext)  ", '0', '1', '1', '0', ALU_OR, X"00000000", X"FFFFFFFF", ext => EXT_SIGN);
+
+        -- lui: the immediate goes to the upper half word (extop = 10), rs = $0
+        exec(X"3C0C1234", "lui  $12,0x1234", '0', '1', '1', '0', ALU_ADD, X"00000000", X"12340000", ext => EXT_UPPER);
+        exec(X"3C0DFFFF", "lui  $13,0xFFFF", '0', '1', '1', '0', ALU_ADD, X"00000000", X"FFFF0000", ext => EXT_UPPER);
+
+        -- Shifts take B ($rt) and the shamt field (instruction bits 10:6); $2 = 5, $11 = 0xFFFFFFFF
+        exec(X"00027100", "sll  $14,$2,4  ", '1', '1', '0', '0', ALU_SLL, X"00000000", w(80));
+        exec(X"000B7A02", "srl  $15,$11,8 ", '1', '1', '0', '0', ALU_SRL, X"00000000", X"00FFFFFF");
+        exec(X"000BC203", "sra  $24,$11,8 ", '1', '1', '0', '0', ALU_SRA, X"00000000", X"FFFFFFFF");
+        -- sltu $25,$0,$11 : 0 < 0xFFFFFFFF unsigned
+        exec(X"000BC82B", "sltu $25,$0,$11", '1', '1', '0', '0', ALU_SLTU, X"00000000", w(1));
 
         -- Branch taken (pcsrc = 1): target = (pc + 4) + (offset << 2)
         exec(X"10000003", "beq  $0,$0,+3  ", '0', '0', '0', '0', ALU_SUB, X"00000000", w(0),

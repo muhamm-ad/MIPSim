@@ -41,21 +41,27 @@ BEGIN
             expect("010", STD_LOGIC_VECTOR(TO_UNSIGNED(f, 6)), "0110", "aluop sub");
             expect("100", STD_LOGIC_VECTOR(TO_UNSIGNED(f, 6)), "0001", "aluop or");
             expect("101", STD_LOGIC_VECTOR(TO_UNSIGNED(f, 6)), "0111", "aluop slt");
-            expect("110", STD_LOGIC_VECTOR(TO_UNSIGNED(f, 6)), "----", "aluop unused");
-            expect("111", STD_LOGIC_VECTOR(TO_UNSIGNED(f, 6)), "----", "aluop unused");
+            expect("110", STD_LOGIC_VECTOR(TO_UNSIGNED(f, 6)), "1000", "aluop sltu");
+            expect("111", STD_LOGIC_VECTOR(TO_UNSIGNED(f, 6)), "1001", "aluop xor");
         END LOOP;
 
         -- R-type: ALUop 011, decoded from funct
+        expect("011", "000000", "1010", "sll (and nop)");
+        expect("011", "000010", "1011", "srl");
+        expect("011", "000011", "1100", "sra");
         expect("011", "100000", "0010", "add");
         expect("011", "100001", "0010", "addu");
         expect("011", "100010", "0110", "sub");
         expect("011", "100011", "0110", "subu");
         expect("011", "100100", "0000", "and");
         expect("011", "100101", "0001", "or");
+        expect("011", "100110", "1001", "xor");
         expect("011", "100111", "0011", "nor");
         expect("011", "101010", "0111", "slt");
+        expect("011", "101011", "1000", "sltu");
         expect("011", "111111", "----", "undefined funct");
         expect("011", "000001", "----", "undefined funct");
+        expect("011", "001000", "----", "jr is not an ALU operation");
 
         REPORT "tb_aludec: PASS (" & INTEGER'image(n_checks) & " checks)";
         finish;

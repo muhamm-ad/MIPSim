@@ -21,7 +21,7 @@ ENTITY decoder IS
 		branch : OUT STD_LOGIC;
 		bne : OUT STD_LOGIC;
 		jump : OUT STD_LOGIC;
-		zeroext : OUT STD_LOGIC;
+		extop : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 		alucontrol : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
 	);
 END ENTITY decoder;
@@ -40,7 +40,7 @@ BEGIN
 			branch => branch,
 			bne => bne,
 			jump => jump,
-			zeroext => zeroext,
+			extop => extop,
 			aluop => aluop_sig
 		);
 
