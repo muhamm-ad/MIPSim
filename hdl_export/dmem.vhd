@@ -35,7 +35,10 @@ ARCHITECTURE behave OF dmem IS
     -- Define the memory type based on the generic parameter MEM_SIZE
     TYPE ramtype IS ARRAY(MEM_SIZE - 1 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL mem : ramtype := (OTHERS => (OTHERS => '0')); -- Initialize memory to zeros
-    SIGNAL word_index : INTEGER; -- Word index derived from the byte address
+    -- Word index derived from the byte address. NATURAL with an explicit initial
+    -- value: the default (INTEGER'LEFT) would index the memory out of bounds
+    -- during the initial delta cycle.
+    SIGNAL word_index : NATURAL := 0;
 BEGIN
     -- An unknown address ('U'/'X') is treated as word 0 for indexing purposes
     word_index <= TO_INTEGER(unsigned(a(31 DOWNTO 2))) WHEN NOT is_x(a) ELSE

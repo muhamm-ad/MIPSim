@@ -15,6 +15,7 @@ TB_DIR    := tb
 GHDLFLAGS := --std=$(STD) --workdir=$(BUILD)
 
 SRCS    := $(sort $(wildcard $(SRC_DIR)/*.vhd))
+TB_FILES := $(sort $(wildcard $(TB_DIR)/*.vhd))
 TBS     := $(sort $(wildcard $(TB_DIR)/tb_*.vhd))
 ENTITIES := $(basename $(notdir $(SRCS)))
 ALL_TESTS := $(basename $(notdir $(TBS)))
@@ -29,7 +30,7 @@ $(BUILD):
 # Import every file once, then make each design unit so that all of them are
 # analysed and elaborated (catches missing ports, bad generics, ...).
 check: | $(BUILD)
-	@$(GHDL) -i $(GHDLFLAGS) $(SRCS) $(TBS)
+	@$(GHDL) -i $(GHDLFLAGS) $(SRCS) $(TB_FILES)
 	@set -e; for e in $(ENTITIES); do \
 	    echo "[check] $$e"; \
 	    $(GHDL) -m $(GHDLFLAGS) $$e; \
@@ -41,12 +42,12 @@ test: | $(BUILD)
 	if [ -z "$(TESTS)" ]; then \
 	    echo "test: no testbench found in $(TB_DIR)/"; \
 	else \
-	    $(GHDL) -i $(GHDLFLAGS) $(SRCS) $(TBS); \
+	    $(GHDL) -i $(GHDLFLAGS) $(SRCS) $(TB_FILES); \
 	    pass=0; \
 	    for t in $(TESTS); do \
 	        echo "[test] $$t"; \
 	        $(GHDL) -m $(GHDLFLAGS) $$t; \
-	        $(GHDL) -r $(GHDLFLAGS) $$t --assert-level=error; \
+	        $(GHDL) -r $(GHDLFLAGS) $$t --assert-level=error --ieee-asserts=disable-at-0; \
 	        pass=$$((pass+1)); \
 	    done; \
 	    echo "test: $$pass testbench(es) passed"; \
@@ -54,9 +55,9 @@ test: | $(BUILD)
 
 wave: | $(BUILD)
 	@test -n "$(T)" || { echo "usage: make wave T=<testbench>"; exit 1; }
-	@$(GHDL) -i $(GHDLFLAGS) $(SRCS) $(TBS)
+	@$(GHDL) -i $(GHDLFLAGS) $(SRCS) $(TB_FILES)
 	@$(GHDL) -m $(GHDLFLAGS) $(T)
-	@$(GHDL) -r $(GHDLFLAGS) $(T) --assert-level=error --wave=$(BUILD)/$(T).ghw
+	@$(GHDL) -r $(GHDLFLAGS) $(T) --assert-level=error --ieee-asserts=disable-at-0 --wave=$(BUILD)/$(T).ghw
 	@echo "waveform written to $(BUILD)/$(T).ghw"
 
 clean:
