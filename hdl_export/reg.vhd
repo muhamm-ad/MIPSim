@@ -29,7 +29,7 @@ END reg;
 ARCHITECTURE behave OF reg IS
     -- Define the register array type
     TYPE ramtype IS ARRAY(31 DOWNTO 0) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL mem : ramtype; -- Memory signal to store the register values
+    SIGNAL mem : ramtype := (OTHERS => (OTHERS => '0')); -- Register values, all cleared at start-up
 BEGIN
     -- Process for handling write operations to the register
     PROCESS (clk) BEGIN

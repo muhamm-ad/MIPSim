@@ -21,7 +21,7 @@ ENTITY decoder IS
 END ENTITY decoder;
 
 ARCHITECTURE struct OF decoder IS
-	SIGNAL aluop_sig : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL aluop_sig : STD_LOGIC_VECTOR(2 DOWNTO 0);
 BEGIN
 	mdec : ENTITY work.maindec
 		PORT MAP(
@@ -38,6 +38,6 @@ BEGIN
 		PORT MAP(
 			aluop => aluop_sig,
 			funct => funct,
-			aluctrl => alucontrol
+			alucontrol => alucontrol
 		);
 END ARCHITECTURE struct;

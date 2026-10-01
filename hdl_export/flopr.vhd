@@ -1,13 +1,13 @@
 --------------------------------------------------------------------------------
 -- Project : MIPSim
 -- File    : flopr.vhd
--- Description: This file defines a flip-flop component named 'flopr'. 
--- It is a generic synchronous resettable flip-flop used in digital circuits.
+-- Description: This file defines a flip-flop component named 'flopr'.
+-- It is a generic resettable flip-flop (asynchronous, active-high reset) used
+-- in digital circuits.
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.STD_LOGIC_ARITH.ALL;
 
 -- Entity declaration of flopr
 ENTITY flopr IS
@@ -26,8 +26,8 @@ ARCHITECTURE asynchronous OF flopr IS
 BEGIN
   PROCESS (clk, reset) BEGIN
     IF reset = '1' THEN
-      q <= CONV_STD_LOGIC_VECTOR(0, DATA_WIDTH); -- Reset logic, clears the output
-    ELSIF clk'event AND clk = '1' THEN
+      q <= (OTHERS => '0'); -- Reset logic, clears the output
+    ELSIF rising_edge(clk) THEN
       q <= d; -- Data transfer on rising edge of the clock
     END IF;
   END PROCESS;
