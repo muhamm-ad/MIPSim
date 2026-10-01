@@ -15,5 +15,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ghdl
       - name: GHDL version
         run: ghdl --version
+      - name: Analyse and elaborate every module
+        run: make check
       - name: Run testbenches
         run: make test

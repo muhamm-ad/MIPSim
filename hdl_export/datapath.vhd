@@ -11,7 +11,6 @@
 
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.ALL;
-USE IEEE.STD_LOGIC_ARITH.ALL;
 
 -- Entity declaration of datapath (MIPS datapath)
 ENTITY datapath IS
@@ -47,7 +46,7 @@ BEGIN
         PORT MAP(clk => clk, reset => reset, d => pcnext, q => pc);
     pcadder : ENTITY work.adder
         GENERIC MAP(VECTOR_SIZE => 32)
-        PORT MAP(v1 => X"00000004", v2 => pc, vecr => pcnext);
+        PORT MAP(v1 => X"00000004", v2 => pc, vr => pcnext);
 
     -- Register logic
     -- Read from registers or write data to a register
@@ -66,15 +65,15 @@ BEGIN
     wrmux : ENTITY work.mux
         GENERIC MAP(DATA_WIDTH => 5, N_INPUTS => 2)
         PORT MAP(
-            data_in => (instr(20 DOWNTO 16) & instr(15 DOWNTO 11)),
-            select_ => regdst,
+            data_in => (instr(15 DOWNTO 11) & instr(20 DOWNTO 16)), -- (rd & rt)
+            sel(0) => regdst,
             data_out => writereg
         );
     resmux : ENTITY work.mux
         GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
         PORT MAP(
-            data_in => (aluresult & readdata),
-            select_ => memtoreg,
+            data_in => (readdata & aluresult), -- (memory data & ALU result)
+            sel(0) => memtoreg,
             data_out => result
         );
     -- Sign extension unit
@@ -86,8 +85,8 @@ BEGIN
     srcbmux : ENTITY work.mux
         GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
         PORT MAP(
-            data_in => (writedata & signimm),
-            select_ => alusrc,
+            data_in => (signimm & writedata), -- (immediate & register)
+            sel(0) => alusrc,
             data_out => srcb
         );
     mainalu : ENTITY work.alu

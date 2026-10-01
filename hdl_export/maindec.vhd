@@ -1,8 +1,10 @@
 --------------------------------------------------------------------------------
 -- Project : MIPSim
 -- File    : maindec.vhd
--- Description: Main decoder for the MIPS processor. This component generates 
+-- Description: Main decoder for the MIPS processor. This component generates
 --              control signals based on the opcode of the instruction.
+--              Don't-care control bits are driven to '0' so that no undefined
+--              value ever reaches the datapath in simulation.
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
@@ -16,29 +18,32 @@ ENTITY maindec IS
         memwrite : OUT STD_LOGIC;
         memtoreg : OUT STD_LOGIC;
         regwrite : OUT STD_LOGIC;
-        aluop : OUT STD_LOGIC_VECTOR(1 DOWNTO 0)
+        aluop : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
     );
 END ENTITY maindec;
 
 ARCHITECTURE struct OF maindec IS
-    SIGNAL controls : STD_LOGIC_VECTOR(6 DOWNTO 0);
+    -- controls = regdst & alusrc & memwrite & memtoreg & regwrite & aluop(2:0)
+    SIGNAL controls : STD_LOGIC_VECTOR(7 DOWNTO 0);
 BEGIN
     PROCESS (op)
     BEGIN
         CASE op IS
-            WHEN X"00" => controls <= ("10001" & "11"); -- R-type (add, sub, etc.)
-            WHEN X"23" => controls <= ("01011" & "00"); -- lw
-            WHEN X"2B" => controls <= ("-11-0" & "00"); -- sw
-                -- TODO : complete
+            WHEN "000000" => controls <= ("10001" & "011"); -- R-type (add, sub, etc.)
+            WHEN "100011" => controls <= ("01011" & "000"); -- lw
+            WHEN "101011" => controls <= ("01100" & "000"); -- sw
+            WHEN "001000" => controls <= ("01001" & "000"); -- addi
+            WHEN "001001" => controls <= ("01001" & "000"); -- addiu
+                -- TODO : andi, ori (need zero extension), beq, bne, j
 
-            WHEN OTHERS => controls <= "0000000"; -- illegal op
+            WHEN OTHERS => controls <= "00000000"; -- illegal op
         END CASE;
     END PROCESS;
 
-    regdst <= controls(6);
-    alusrc <= controls(5);
-    memwrite <= controls(4);
-    memtoreg <= controls(3);
-    regwrite <= controls(2);
-    aluop <= controls(1 DOWNTO 0);
+    regdst <= controls(7);
+    alusrc <= controls(6);
+    memwrite <= controls(5);
+    memtoreg <= controls(4);
+    regwrite <= controls(3);
+    aluop <= controls(2 DOWNTO 0);
 END ARCHITECTURE struct;
