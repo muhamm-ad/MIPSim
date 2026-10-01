@@ -29,7 +29,7 @@ ENTITY datapath IS
         regwrite : IN STD_LOGIC;
         writedata : BUFFER STD_LOGIC_VECTOR (31 DOWNTO 0);
         alusrc : IN STD_LOGIC;
-        zeroext : IN STD_LOGIC;
+        extop : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
         alucontrol : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
         aluresult : BUFFER STD_LOGIC_VECTOR (31 DOWNTO 0);
         readdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -46,7 +46,7 @@ ARCHITECTURE struct OF datapath IS
     SIGNAL pcplus4, pcbranch, pcjump : STD_LOGIC_VECTOR (31 DOWNTO 0);
     SIGNAL writereg : STD_LOGIC_VECTOR (4 DOWNTO 0);
     SIGNAL result : STD_LOGIC_VECTOR (31 DOWNTO 0);
-    SIGNAL signimm, zeroimm, extimm, signimmsh : STD_LOGIC_VECTOR (31 DOWNTO 0);
+    SIGNAL signimm, zeroimm, upperimm, extimm, signimmsh : STD_LOGIC_VECTOR (31 DOWNTO 0);
     SIGNAL srca, srcb : STD_LOGIC_VECTOR (31 DOWNTO 0);
 
 BEGIN
@@ -111,15 +111,17 @@ BEGIN
             data_out => result
         );
     -- Immediate extension unit
-    -- Extends a 16-bit immediate to 32 bits: sign-extended (addi, lw, sw, branches, ...)
-    -- or zero-extended (andi, ori)
+    -- Builds the 32-bit immediate from the 16-bit field, selected by extop:
+    --   00 sign-extended (addi, lw, sw, slti, ...)   01 zero-extended (andi, ori, xori)
+    --   10 upper half word (lui)
     se : ENTITY work.signext PORT MAP(data_in => instr(15 DOWNTO 0), data_out => signimm);
     zeroimm <= X"0000" & instr(15 DOWNTO 0);
+    upperimm <= instr(15 DOWNTO 0) & X"0000";
     immmux : ENTITY work.mux
-        GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
+        GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 3)
         PORT MAP(
-            data_in => (zeroimm & signimm), -- (zero-extended & sign-extended)
-            sel(0) => zeroext,
+            data_in => (upperimm & zeroimm & signimm), -- (upper & zero-extended & sign-extended)
+            sel => extop,
             data_out => extimm
         );
 
@@ -137,6 +139,7 @@ BEGIN
         PORT MAP(
             srca => srca,
             srcb => srcb,
+            shamt => instr(10 DOWNTO 6),
             aluctl => alucontrol,
             zero => zero,
             aluout => aluresult

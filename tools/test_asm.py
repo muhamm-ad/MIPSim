@@ -27,6 +27,14 @@ class EncodingTests(unittest.TestCase):
         self.assertEqual(words("or $t0, $t1, $t2"), [0x012A4025])
         self.assertEqual(words("nor $t0, $t1, $t2"), [0x012A4027])
         self.assertEqual(words("slt $t0, $t1, $t2"), [0x012A402A])
+        self.assertEqual(words("xor $t0, $t1, $t2"), [0x012A4026])
+        self.assertEqual(words("sltu $t0, $t1, $t2"), [0x012A402B])
+
+    def test_shifts(self):
+        self.assertEqual(words("sll $t0, $t1, 4"), [0x00094100])
+        self.assertEqual(words("srl $t0, $t1, 31"), [0x000947C2])
+        self.assertEqual(words("sra $t0, $t1, 1"), [0x00094043])
+        self.assertEqual(words("sll $0, $0, 0"), [0x00000000])  # nop
 
     def test_immediates(self):
         self.assertEqual(words("addi $v0, $0, 5"), [0x20020005])
@@ -36,6 +44,10 @@ class EncodingTests(unittest.TestCase):
         self.assertEqual(words("ori $t0, $t0, 0xFF"), [0x350800FF])
         self.assertEqual(words("andi $t0, $t1, 0x8000"), [0x31288000])
         self.assertEqual(words("slti $t0, $t1, 10"), [0x2928000A])
+        self.assertEqual(words("sltiu $t0, $t1, -1"), [0x2D28FFFF])
+        self.assertEqual(words("xori $t0, $t1, 0xFF"), [0x392800FF])
+        self.assertEqual(words("lui $t0, 0x1234"), [0x3C081234])
+        self.assertEqual(words("lui $t0, 0xFFFF"), [0x3C08FFFF])
 
     def test_memory(self):
         self.assertEqual(words("lw $t0, 4($sp)"), [0x8FA80004])
@@ -72,7 +84,25 @@ class EncodingTests(unittest.TestCase):
         self.assertEqual(words("li $t0, 5"), [0x20080005])  # addi
         self.assertEqual(words("li $t0, -5"), [0x2008FFFB])
         self.assertEqual(words("li $t0, 0xFFFF"), [0x3408FFFF])  # ori (does not fit signed)
+        self.assertEqual(words("not $t0, $t1"), [0x01204027])  # nor $t0,$t1,$0
+        self.assertEqual(words("neg $t0, $t1"), [0x00094022])  # sub $t0,$0,$t1
+        self.assertEqual(words("top: b top"), [0x1000FFFF])  # beq $0,$0,top
         self.assertEqual(words("nop\nnop\nhalt"), [0, 0, 0x08000002])  # j to itself
+
+    def test_li_with_32_bit_constants(self):
+        self.assertEqual(words("li $t0, 0x12345678"), [0x3C081234, 0x35085678])  # lui + ori
+        self.assertEqual(words("li $t0, 0x10000"), [0x3C080001])  # low half is zero: lui only
+        self.assertEqual(words("li $t0, 65536"), [0x3C080001])
+        self.assertEqual(words("li $t0, -32769"), [0x3C08FFFF, 0x35087FFF])
+        self.assertEqual(words("li $t0, 0xFFFFFFFF"), [0x3C08FFFF, 0x3508FFFF])
+        self.assertEqual(words("li $t0, -2147483648"), [0x3C088000])
+
+    def test_multiword_li_shifts_following_label_addresses(self):
+        # the 2-word li moves 'here' to 0x08, so the branch at 0x08 back to 'top' is -3
+        src = "top: li $t0, 0x12345678\nhere: beq $0, $0, top\n j here"
+        w = words(src)
+        self.assertEqual(w[2], 0x1000FFFD)
+        self.assertEqual(w[3], 0x08000002)  # j to 0x08
 
     def test_word_directive_and_ignored_directives(self):
         self.assertEqual(words(".text\n.globl main\n.word 0xDEADBEEF\n.word -1"),
@@ -113,7 +143,12 @@ class ErrorTests(unittest.TestCase):
         self.assert_error("addi $t0, $0, -32769", "does not fit", 1)
         self.assert_error("ori $t0, $0, -1", "does not fit", 1)
         self.assert_error("ori $t0, $0, 65536", "does not fit", 1)
-        self.assert_error("li $t0, 65536", "does not fit", 1)
+        self.assert_error("li $t0, 0x100000000", "does not fit in 32 bits", 1)
+        self.assert_error("li $t0, -2147483649", "does not fit in 32 bits", 1)
+        self.assert_error("lui $t0, 65536", "does not fit", 1)
+        self.assert_error("lui $t0, -1", "does not fit", 1)
+        self.assert_error("sll $t0, $t1, 32", "out of range", 1)
+        self.assert_error("srl $t0, $t1, -1", "out of range", 1)
 
     def test_undefined_and_duplicate_labels(self):
         self.assert_error("j nowhere", "undefined label", 1)

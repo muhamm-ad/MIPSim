@@ -26,7 +26,8 @@ END;
 
 ARCHITECTURE struct OF mips IS
     SIGNAL memtoreg, alusrc, regdst, regwrite : STD_LOGIC;
-    SIGNAL branch, bne, jump, zeroext : STD_LOGIC;
+    SIGNAL branch, bne, jump : STD_LOGIC;
+    SIGNAL extop : STD_LOGIC_VECTOR(1 DOWNTO 0);
     SIGNAL zero, pcsrc : STD_LOGIC;
     SIGNAL alucontrol : STD_LOGIC_VECTOR(3 DOWNTO 0);
 BEGIN
@@ -42,7 +43,7 @@ BEGIN
             branch => branch,
             bne => bne,
             jump => jump,
-            zeroext => zeroext,
+            extop => extop,
             alucontrol => alucontrol
         );
 
@@ -58,7 +59,7 @@ BEGIN
             regwrite => regwrite,
             writedata => writedata,
             alusrc => alusrc,
-            zeroext => zeroext,
+            extop => extop,
             alucontrol => alucontrol,
             aluresult => aluout,
             readdata => readdata,

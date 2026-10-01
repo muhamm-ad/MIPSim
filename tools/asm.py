@@ -6,16 +6,23 @@ Turns a MIPS assembly file into the hex program format read by hdl_export/imem.v
 memory contents used by tb/tb_mips.vhd.
 
 Supported instructions (see Docs/Supported_Instruction.md):
-    add addu sub subu and or nor slt        rd, rs, rt
-    addi addiu slti                         rt, rs, imm   (imm: -32768..32767)
-    andi ori                                rt, rs, imm   (imm: 0..65535)
-    lw sw                                   rt, imm(rs)
-    beq bne                                 rs, rt, label
-    j                                       label
+    add addu sub subu and or xor nor slt sltu   rd, rs, rt
+    sll srl sra                                 rd, rt, shamt   (shamt: 0..31)
+    addi addiu slti sltiu                       rt, rs, imm     (imm: -32768..32767)
+    andi ori xori                               rt, rs, imm     (imm: 0..65535)
+    lui                                         rt, imm         (imm: 0..65535)
+    lw sw                                       rt, imm(rs)
+    beq bne                                     rs, rt, label
+    j                                           label
 Pseudo-instructions:
     nop                 sll $0,$0,0 (all-zero word)
     move rd, rs         addu rd, rs, $0
-    li rt, imm          addi rt,$0,imm  or  ori rt,$0,imm  (16-bit constants only)
+    li rt, imm          any 32-bit constant: addi rt,$0,imm for -32768..32767, ori
+                        rt,$0,imm for 32768..65535, otherwise lui rt,hi16 followed by
+                        ori rt,rt,lo16 (the ori is omitted when lo16 is 0)
+    b label             beq $0,$0,label
+    not rd, rs          nor rd, rs, $0
+    neg rd, rs          sub rd, $0, rs
     halt                j <this instruction>: the PC stops moving, which the testbench
                         detects as the end of the program
 Directives:
@@ -48,17 +55,18 @@ REGISTERS = {
 
 R_FUNCT = {
     "add": 0x20, "addu": 0x21, "sub": 0x22, "subu": 0x23,
-    "and": 0x24, "or": 0x25, "nor": 0x27, "slt": 0x2A,
+    "and": 0x24, "or": 0x25, "xor": 0x26, "nor": 0x27, "slt": 0x2A, "sltu": 0x2B,
 }
+SHIFT_FUNCT = {"sll": 0x00, "srl": 0x02, "sra": 0x03}
 # mnemonic -> (opcode, signed immediate?)
 I_ARITH = {
-    "addi": (0x08, True), "addiu": (0x09, True), "slti": (0x0A, True),
-    "andi": (0x0C, False), "ori": (0x0D, False),
+    "addi": (0x08, True), "addiu": (0x09, True), "slti": (0x0A, True), "sltiu": (0x0B, True),
+    "andi": (0x0C, False), "ori": (0x0D, False), "xori": (0x0E, False),
 }
+LUI_OP = 0x0F
 MEM_OP = {"lw": 0x23, "sw": 0x2B}
 BRANCH_OP = {"beq": 0x04, "bne": 0x05}
 J_OP = {"j": 0x02}
-PSEUDO = {"nop", "move", "li", "halt"}
 DIRECTIVES_IGNORED = {".text", ".data", ".globl", ".global", ".set"}
 
 EXPECT_RE = re.compile(r"#\s*expect\s+MEM\[\s*([^\]\s]+)\s*\]\s*=\s*(\S+)", re.IGNORECASE)
@@ -127,6 +135,40 @@ def split_operands(rest):
     return [part.strip() for part in rest.split(",")]
 
 
+def expand(mnemonic, operands, lineno):
+    """Rewrite pseudo-instructions that map onto other instructions.
+
+    Returns a list of (mnemonic, operands) real or already-handled statements.
+    """
+    if mnemonic == "li":
+        if len(operands) != 2:
+            raise AsmError(f"'li' takes 2 operand(s), got {len(operands)}", lineno)
+        value = parse_int(operands[1], lineno)
+        if -32768 <= value <= 65535:
+            return [("li", operands)]  # one word, encoded directly
+        if not -(1 << 31) <= value <= 0xFFFFFFFF:
+            raise AsmError(f"li: {value} does not fit in 32 bits", lineno)
+        value &= 0xFFFFFFFF
+        reg = operands[0]
+        out = [("lui", [reg, str(value >> 16)])]
+        if value & 0xFFFF:
+            out.append(("ori", [reg, reg, str(value & 0xFFFF)]))
+        return out
+    if mnemonic == "b":
+        if len(operands) != 1:
+            raise AsmError(f"'b' takes 1 operand(s), got {len(operands)}", lineno)
+        return [("beq", ["$0", "$0", operands[0]])]
+    if mnemonic == "not":
+        if len(operands) != 2:
+            raise AsmError(f"'not' takes 2 operand(s), got {len(operands)}", lineno)
+        return [("nor", [operands[0], operands[1], "$0"])]
+    if mnemonic == "neg":
+        if len(operands) != 2:
+            raise AsmError(f"'neg' takes 2 operand(s), got {len(operands)}", lineno)
+        return [("sub", [operands[0], "$0", operands[1]])]
+    return [(mnemonic, operands)]
+
+
 def first_pass(source):
     """Collect statements, labels and `expect` directives."""
     statements = []
@@ -158,8 +200,10 @@ def first_pass(source):
         operands = split_operands(parts[1]) if len(parts) > 1 else []
         if mnemonic in DIRECTIVES_IGNORED:
             continue
-        statements.append(Statement(mnemonic, operands, address, lineno, line))
-        address += 4
+        for position, (real, real_ops) in enumerate(expand(mnemonic, operands, lineno)):
+            text = line if position == 0 else f"    ... {real} {', '.join(real_ops)}"
+            statements.append(Statement(real, real_ops, address, lineno, text))
+            address += 4
     return statements, labels, expects
 
 
@@ -182,6 +226,19 @@ def encode(stmt, labels):
         expect_operands(stmt, 3)
         rd, rs, rt = (parse_register(o, ln) for o in ops)
         return r_type(rs, rt, rd, 0, R_FUNCT[m])
+
+    if m in SHIFT_FUNCT:
+        expect_operands(stmt, 3)
+        rd, rt = parse_register(ops[0], ln), parse_register(ops[1], ln)
+        shamt = parse_int(ops[2], ln)
+        if not 0 <= shamt <= 31:
+            raise AsmError(f"shift amount {shamt} out of range (0..31)", ln)
+        return r_type(0, rt, rd, shamt, SHIFT_FUNCT[m])
+
+    if m == "lui":
+        expect_operands(stmt, 2)
+        rt = parse_register(ops[0], ln)
+        return i_type(LUI_OP, 0, rt, check_imm(parse_int(ops[1], ln), False, ln))
 
     if m in I_ARITH:
         expect_operands(stmt, 3)
@@ -229,9 +286,7 @@ def encode(stmt, labels):
         rt, value = parse_register(ops[0], ln), parse_int(ops[1], ln)
         if -32768 <= value <= 32767:
             return i_type(I_ARITH["addi"][0], 0, rt, value & 0xFFFF)
-        if 32768 <= value <= 65535:
-            return i_type(I_ARITH["ori"][0], 0, rt, value)
-        raise AsmError(f"li: {value} does not fit in 16 bits (no lui available)", ln)
+        return i_type(I_ARITH["ori"][0], 0, rt, value)  # 32768..65535 (checked by expand)
     if m == "halt":
         expect_operands(stmt, 0)
         return (J_OP["j"] << 26) | ((stmt.address >> 2) & 0x3FFFFFF)

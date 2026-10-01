@@ -7,10 +7,13 @@
 -- configured using generic parameters.
 --
 -- aluctl encoding (see Docs/Supported_Instruction.md):
---   0000 A AND B        0100 A AND (NOT B)
---   0001 A OR  B        0101 A OR  (NOT B)
---   0010 A + B          0110 A - B
---   0011 A NOR B        0111 SLT (signed A < B ? 1 : 0)
+--   0000 A AND B        0100 A AND (NOT B)     1000 SLTU (unsigned A < B ? 1 : 0)
+--   0001 A OR  B        0101 A OR  (NOT B)     1001 A XOR B
+--   0010 A + B          0110 A - B             1010 B << shamt   (SLL)
+--   0011 A NOR B        0111 SLT (signed)      1011 B >> shamt   (SRL, logical)
+--                                              1100 B >> shamt   (SRA, arithmetic)
+-- The shifts operate on B (the 'rt' register) by the constant 'shamt' field of
+-- the instruction, as in MIPS (sll rd, rt, shamt).
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
@@ -23,6 +26,7 @@ ENTITY alu IS
     );
     PORT (
         srca, srcb : IN STD_LOGIC_VECTOR(DATA_WIDTH - 1 DOWNTO 0); -- Input vectors
+        shamt : IN STD_LOGIC_VECTOR(4 DOWNTO 0); -- Shift amount (instruction bits 10:6)
         aluctl : IN STD_LOGIC_VECTOR(3 DOWNTO 0); -- Function code to determine the operation
         zero : OUT STD_LOGIC; -- Zero flag output
         aluout : OUT STD_LOGIC_VECTOR(DATA_WIDTH - 1 DOWNTO 0) := (OTHERS => '0') -- Output vector
@@ -34,7 +38,7 @@ ARCHITECTURE behave OF alu IS
 BEGIN
 
     -- Process to perform operations based on function code
-    PROCESS (srca, srcb, aluctl) BEGIN
+    PROCESS (srca, srcb, shamt, aluctl) BEGIN
         CASE aluctl IS
             WHEN "0000" => tmp <= srca AND srcb; -- AND
             WHEN "0001" => tmp <= srca OR srcb; -- OR
@@ -49,6 +53,16 @@ BEGIN
                 ELSE
                     tmp <= (OTHERS => '0');
                 END IF;
+            WHEN "1000" => -- SLTU (unsigned comparison)
+                IF unsigned(srca) < unsigned(srcb) THEN
+                    tmp <= (0 => '1', OTHERS => '0');
+                ELSE
+                    tmp <= (OTHERS => '0');
+                END IF;
+            WHEN "1001" => tmp <= srca XOR srcb; -- XOR
+            WHEN "1010" => tmp <= STD_LOGIC_VECTOR(shift_left(unsigned(srcb), TO_INTEGER(unsigned(shamt)))); -- SLL
+            WHEN "1011" => tmp <= STD_LOGIC_VECTOR(shift_right(unsigned(srcb), TO_INTEGER(unsigned(shamt)))); -- SRL
+            WHEN "1100" => tmp <= STD_LOGIC_VECTOR(shift_right(signed(srcb), TO_INTEGER(unsigned(shamt)))); -- SRA
             WHEN OTHERS => tmp <= (OTHERS => '1'); -- Default case
         END CASE;
     END PROCESS;
