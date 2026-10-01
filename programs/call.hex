@@ -1,0 +1,44 @@
+201D00FC  # 0x0000: li   $sp, 252
+20040006  # 0x0004: li   $a0, 6
+0C00000F  # 0x0008: jal  fact
+AC020000  # 0x000c: sw   $v0, 0($0)
+20040005  # 0x0010: li   $a0, 5
+0C00000F  # 0x0014: jal  fact
+AC020004  # 0x0018: sw   $v0, 4($0)
+20040000  # 0x001c: li   $a0, 0
+0C00000F  # 0x0020: jal  fact
+AC020008  # 0x0024: sw   $v0, 8($0)
+2004000A  # 0x0028: li   $a0, 10
+0C000023  # 0x002c: jal  twice_plus_one
+AC02000C  # 0x0030: sw   $v0, 12($0)
+AC1D0010  # 0x0034: sw   $sp, 16($0)
+0800000E  # 0x0038: halt
+23BDFFF8  # 0x003c: addi $sp, $sp, -8
+AFBF0004  # 0x0040: sw   $ra, 4($sp)
+AFA40000  # 0x0044: sw   $a0, 0($sp)
+28880002  # 0x0048: slti $t0, $a0, 2
+11000003  # 0x004c: beq  $t0, $0, recurse
+20020001  # 0x0050: li   $v0, 1
+23BD0008  # 0x0054: addi $sp, $sp, 8
+03E00008  # 0x0058: jr   $ra
+2084FFFF  # 0x005c: addi $a0, $a0, -1
+0C00000F  # 0x0060: jal  fact
+8FA40000  # 0x0064: lw   $a0, 0($sp)
+8FBF0004  # 0x0068: lw   $ra, 4($sp)
+23BD0008  # 0x006c: addi $sp, $sp, 8
+00402821  # 0x0070: move $a1, $v0
+20020000  # 0x0074: li   $v0, 0
+10800003  # 0x0078: beq  $a0, $0, mdone
+00451020  # 0x007c: add  $v0, $v0, $a1
+2084FFFF  # 0x0080: addi $a0, $a0, -1
+0800001E  # 0x0084: j    mloop
+03E00008  # 0x0088: jr   $ra
+23BDFFFC  # 0x008c: addi $sp, $sp, -4
+AFBF0000  # 0x0090: sw   $ra, 0($sp)
+0C00002A  # 0x0094: jal  twice
+20420001  # 0x0098: addi $v0, $v0, 1
+8FBF0000  # 0x009c: lw   $ra, 0($sp)
+23BD0004  # 0x00a0: addi $sp, $sp, 4
+03E00008  # 0x00a4: jr   $ra
+00841020  # 0x00a8: add  $v0, $a0, $a0
+03E00008  # 0x00ac: jr   $ra

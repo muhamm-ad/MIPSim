@@ -13,7 +13,8 @@ Supported instructions (see Docs/Supported_Instruction.md):
     lui                                         rt, imm         (imm: 0..65535)
     lw sw                                       rt, imm(rs)
     beq bne                                     rs, rt, label
-    j                                           label
+    j jal                                       label
+    jr                                          rs
 Pseudo-instructions:
     nop                 sll $0,$0,0 (all-zero word)
     move rd, rs         addu rd, rs, $0
@@ -66,7 +67,8 @@ I_ARITH = {
 LUI_OP = 0x0F
 MEM_OP = {"lw": 0x23, "sw": 0x2B}
 BRANCH_OP = {"beq": 0x04, "bne": 0x05}
-J_OP = {"j": 0x02}
+J_OP = {"j": 0x02, "jal": 0x03}
+JR_FUNCT = 0x08
 DIRECTIVES_IGNORED = {".text", ".data", ".globl", ".global", ".set"}
 
 EXPECT_RE = re.compile(r"#\s*expect\s+MEM\[\s*([^\]\s]+)\s*\]\s*=\s*(\S+)", re.IGNORECASE)
@@ -273,6 +275,10 @@ def encode(stmt, labels):
         if (target & 0xF0000000) != ((stmt.address + 4) & 0xF0000000):
             raise AsmError("jump target is outside the current 256 MiB region", ln)
         return (J_OP[m] << 26) | ((target >> 2) & 0x3FFFFFF)
+
+    if m == "jr":
+        expect_operands(stmt, 1)
+        return r_type(parse_register(ops[0], ln), 0, 0, 0, JR_FUNCT)
 
     if m == "nop":
         expect_operands(stmt, 0)

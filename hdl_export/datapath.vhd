@@ -11,9 +11,10 @@
 --   pcplus4  = pc + 4
 --   pcbranch = pcplus4 + (SignExtImm << 2)               (taken when pcsrc = 1)
 --   pcjump   = pcplus4[31:28] & instr[25:0] & "00"       (taken when jump = 1)
---   pcnext   = jump ? pcjump : (pcsrc ? pcbranch : pcplus4)
+--   pcnext   = jr ? R[rs] : (jump ? pcjump : (pcsrc ? pcbranch : pcplus4))
 -- 'pcsrc' (branch decision) is computed by the controller from 'zero'.
--- TODO add jal / jr and other instruction-specific behaviors.
+-- jal (link = 1): the destination register is forced to $31 and the value written
+-- is PC+4 (the return address); jr jumps to the address held in R[rs].
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
@@ -36,16 +37,18 @@ ENTITY datapath IS
         memtoreg : IN STD_LOGIC;
         pcsrc : IN STD_LOGIC;
         jump : IN STD_LOGIC;
+        jr : IN STD_LOGIC;
+        link : IN STD_LOGIC;
         zero : OUT STD_LOGIC
     );
 END;
 
 ARCHITECTURE struct OF datapath IS
 
-    SIGNAL pcnext, pcnextbr : STD_LOGIC_VECTOR (31 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL pcnext, pcnextbr, pcnextj : STD_LOGIC_VECTOR (31 DOWNTO 0) := (OTHERS => '0');
     SIGNAL pcplus4, pcbranch, pcjump : STD_LOGIC_VECTOR (31 DOWNTO 0);
-    SIGNAL writereg : STD_LOGIC_VECTOR (4 DOWNTO 0);
-    SIGNAL result : STD_LOGIC_VECTOR (31 DOWNTO 0);
+    SIGNAL writereg, writeregi : STD_LOGIC_VECTOR (4 DOWNTO 0);
+    SIGNAL result, resulti : STD_LOGIC_VECTOR (31 DOWNTO 0);
     SIGNAL signimm, zeroimm, upperimm, extimm, signimmsh : STD_LOGIC_VECTOR (31 DOWNTO 0);
     SIGNAL srca, srcb : STD_LOGIC_VECTOR (31 DOWNTO 0);
 
@@ -79,6 +82,14 @@ BEGIN
         PORT MAP(
             data_in => (pcjump & pcnextbr), -- (jump target & PC+4 / branch target)
             sel(0) => jump,
+            data_out => pcnextj
+        );
+    -- jr: the next PC is the content of register rs
+    pcjrmux : ENTITY work.mux
+        GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
+        PORT MAP(
+            data_in => (srca & pcnextj), -- (R[rs] & jump / branch / PC+4)
+            sel(0) => jr,
             data_out => pcnext
         );
 
@@ -101,6 +112,14 @@ BEGIN
         PORT MAP(
             data_in => (instr(15 DOWNTO 11) & instr(20 DOWNTO 16)), -- (rd & rt)
             sel(0) => regdst,
+            data_out => writeregi
+        );
+    -- jal writes the return address into $31
+    wrlinkmux : ENTITY work.mux
+        GENERIC MAP(DATA_WIDTH => 5, N_INPUTS => 2)
+        PORT MAP(
+            data_in => ("11111" & writeregi), -- ($31 & rt / rd)
+            sel(0) => link,
             data_out => writereg
         );
     resmux : ENTITY work.mux
@@ -108,6 +127,14 @@ BEGIN
         PORT MAP(
             data_in => (readdata & aluresult), -- (memory data & ALU result)
             sel(0) => memtoreg,
+            data_out => resulti
+        );
+    -- jal writes PC+4 (the return address)
+    reslinkmux : ENTITY work.mux
+        GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
+        PORT MAP(
+            data_in => (pcplus4 & resulti), -- (PC+4 & memory data / ALU result)
+            sel(0) => link,
             data_out => result
         );
     -- Immediate extension unit
