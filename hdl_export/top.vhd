@@ -13,7 +13,8 @@ USE IEEE.STD_LOGIC_1164.ALL;
 ENTITY top IS
     GENERIC (
         IMEM_ADDR_SIZE : INTEGER := 6; -- Instruction memory holds 2**IMEM_ADDR_SIZE words
-        DMEM_SIZE : INTEGER := 64 -- Data memory size in words
+        DMEM_SIZE : INTEGER := 64; -- Data memory size in words
+        PROGRAM : STRING := "" -- Program file loaded into imem ("" = built-in demo program)
     );
     PORT (
         clk, reset : IN STD_LOGIC;
@@ -43,7 +44,7 @@ BEGIN
 
     -- Instruction memory, word addressed: the PC is a byte address
     imem : ENTITY work.imem
-        GENERIC MAP(ADDR_SIZE => IMEM_ADDR_SIZE)
+        GENERIC MAP(ADDR_SIZE => IMEM_ADDR_SIZE, INIT_FILE => PROGRAM)
         PORT MAP(a => pc_s(IMEM_ADDR_SIZE + 1 DOWNTO 2), rd => instr);
 
     -- Data memory
