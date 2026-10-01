@@ -4,7 +4,8 @@
 -- decoder would produce, one instruction per clock cycle (the memory is faked:
 -- 'readdata' is supplied by the testbench). Exercises R-type, addi (negative
 -- immediate), sw (address + store data), lw (memory -> register), the zero flag,
--- register write enable, PC+4 and the asynchronous reset.
+-- register write enable, zero-extended immediates, PC+4, branch and jump targets
+-- and the asynchronous reset.
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
@@ -20,8 +21,11 @@ ARCHITECTURE sim OF tb_datapath IS
     SIGNAL reset : STD_LOGIC := '1';
     SIGNAL pc, instr, writedata, aluresult, readdata : STD_LOGIC_VECTOR(31 DOWNTO 0) := (OTHERS => '0');
     SIGNAL regdst, regwrite, alusrc, memtoreg, zero : STD_LOGIC := '0';
+    SIGNAL zeroext, pcsrc, jump : STD_LOGIC := '0';
     SIGNAL alucontrol : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0010";
 
+    CONSTANT ALU_AND : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0000";
+    CONSTANT ALU_OR : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0001";
     CONSTANT ALU_ADD : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0010";
     CONSTANT ALU_SUB : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0110";
 
@@ -36,20 +40,24 @@ BEGIN
         PORT MAP(
             clk => clk, reset => reset, pc => pc, instr => instr,
             regdst => regdst, regwrite => regwrite, writedata => writedata,
-            alusrc => alusrc, alucontrol => alucontrol, aluresult => aluresult,
-            readdata => readdata, memtoreg => memtoreg, zero => zero);
+            alusrc => alusrc, zeroext => zeroext, alucontrol => alucontrol, aluresult => aluresult,
+            readdata => readdata, memtoreg => memtoreg, pcsrc => pcsrc, jump => jump, zero => zero);
 
     PROCESS
         VARIABLE n : INTEGER := 0; -- number of instructions executed
+        VARIABLE exp_pc : INTEGER := 0; -- address the PC must hold before the next instruction
 
         -- Execute one instruction: apply instr + control word, check the
-        -- combinational results, then let the clock edge commit the write-back.
+        -- combinational results, then let the clock edge commit the write-back
+        -- and check the new PC (PC+4 unless next_pc is given).
         PROCEDURE exec(i : STD_LOGIC_VECTOR(31 DOWNTO 0); name : STRING;
         rd, rw, asrc, m2r : STD_LOGIC; ctl : STD_LOGIC_VECTOR(3 DOWNTO 0);
         mem_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
-        want_alu : STD_LOGIC_VECTOR(31 DOWNTO 0)) IS
+        want_alu : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        zext : STD_LOGIC := '0'; psrc : STD_LOGIC := '0'; jmp : STD_LOGIC := '0';
+        next_pc : INTEGER := - 1) IS
         BEGIN
-            ASSERT pc = w(4 * n) REPORT name & ": pc expected " & to_hstring(w(4 * n)) & " got " & to_hstring(pc) SEVERITY error;
+            ASSERT pc = w(exp_pc) REPORT name & ": pc expected " & to_hstring(w(exp_pc)) & " got " & to_hstring(pc) SEVERITY error;
             instr <= i;
             regdst <= rd;
             regwrite <= rw;
@@ -57,6 +65,9 @@ BEGIN
             memtoreg <= m2r;
             alucontrol <= ctl;
             readdata <= mem_data;
+            zeroext <= zext;
+            pcsrc <= psrc;
+            jump <= jmp;
             WAIT FOR 2 ns;
             ASSERT aluresult = want_alu
             REPORT name & ": aluresult expected " & to_hstring(want_alu) & " got " & to_hstring(aluresult) SEVERITY error;
@@ -68,6 +79,11 @@ BEGIN
             WAIT UNTIL rising_edge(clk);
             WAIT FOR 1 ns;
             n := n + 1;
+            IF next_pc < 0 THEN
+                exp_pc := exp_pc + 4;
+            ELSE
+                exp_pc := next_pc;
+            END IF;
         END PROCEDURE;
     BEGIN
         -- Reset: asynchronous, PC is 0 and stays there until released
@@ -103,6 +119,25 @@ BEGIN
         exec(X"20000063", "addi $0,$0,99  ", '0', '1', '1', '0', ALU_ADD, X"00000000", w(99));
         -- ($0 - $2 = -5 only if $0 reads as 0; it would be 94 if the write had stuck)
         exec(X"00021822", "sub  $3,$0,$2  ", '1', '1', '0', '0', ALU_SUB, X"00000000", w(-5));
+
+        -- Zero-extended immediates (zeroext = 1): ori 0xFFFF gives 0x0000FFFF, not 0xFFFFFFFF
+        exec(X"340BFFFF", "ori  $11,$0,FFFF", '0', '1', '1', '0', ALU_OR, X"00000000", X"0000FFFF", zext => '1');
+        exec(X"316C00FF", "andi $12,$11,00FF", '0', '1', '1', '0', ALU_AND, X"00000000", X"000000FF", zext => '1');
+        -- The same immediate is sign-extended when zeroext = 0
+        exec(X"340BFFFF", "ori  (sign-ext)  ", '0', '1', '1', '0', ALU_OR, X"00000000", X"FFFFFFFF", zext => '0');
+
+        -- Branch taken (pcsrc = 1): target = (pc + 4) + (offset << 2)
+        exec(X"10000003", "beq  $0,$0,+3  ", '0', '0', '0', '0', ALU_SUB, X"00000000", w(0),
+        psrc => '1', next_pc => exp_pc + 4 + 12);
+        exec(X"1000FFFE", "beq  $0,$0,-2  ", '0', '0', '0', '0', ALU_SUB, X"00000000", w(0),
+        psrc => '1', next_pc => exp_pc + 4 - 8);
+        -- Branch not taken (pcsrc = 0): falls through to PC + 4
+        exec(X"10000003", "beq  (not taken)", '0', '0', '0', '0', ALU_SUB, X"00000000", w(0));
+
+        -- Jump: target = PC+4[31:28] & address & "00"  (address field 0x40 -> byte address 0x100)
+        exec(X"08000040", "j    0x100     ", '0', '0', '0', '0', ALU_ADD, X"00000000", w(0),
+        jmp => '1', next_pc => 16#100#);
+        exec(X"20020001", "addi $2,$0,1   ", '0', '1', '1', '0', ALU_ADD, X"00000000", w(1)); -- executes at 0x100
 
         -- Asynchronous reset in the middle of the run brings the PC back to 0
         reset <= '1';

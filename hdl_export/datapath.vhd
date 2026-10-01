@@ -6,7 +6,14 @@
 -- ALU, and multiplexers to execute instructions. The datapath handles data flow
 -- and control signals to perform arithmetic and logical operations as per MIPS
 -- instruction set architecture.
--- TODO add jump, and other instruction-specific behaviors.
+--
+-- Next-PC logic:
+--   pcplus4  = pc + 4
+--   pcbranch = pcplus4 + (SignExtImm << 2)               (taken when pcsrc = 1)
+--   pcjump   = pcplus4[31:28] & instr[25:0] & "00"       (taken when jump = 1)
+--   pcnext   = jump ? pcjump : (pcsrc ? pcbranch : pcplus4)
+-- 'pcsrc' (branch decision) is computed by the controller from 'zero'.
+-- TODO add jal / jr and other instruction-specific behaviors.
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
@@ -22,20 +29,24 @@ ENTITY datapath IS
         regwrite : IN STD_LOGIC;
         writedata : BUFFER STD_LOGIC_VECTOR (31 DOWNTO 0);
         alusrc : IN STD_LOGIC;
+        zeroext : IN STD_LOGIC;
         alucontrol : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
         aluresult : BUFFER STD_LOGIC_VECTOR (31 DOWNTO 0);
         readdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
         memtoreg : IN STD_LOGIC;
+        pcsrc : IN STD_LOGIC;
+        jump : IN STD_LOGIC;
         zero : OUT STD_LOGIC
     );
 END;
 
 ARCHITECTURE struct OF datapath IS
 
-    SIGNAL pcnext : STD_LOGIC_VECTOR (31 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL pcnext, pcnextbr : STD_LOGIC_VECTOR (31 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL pcplus4, pcbranch, pcjump : STD_LOGIC_VECTOR (31 DOWNTO 0);
     SIGNAL writereg : STD_LOGIC_VECTOR (4 DOWNTO 0);
     SIGNAL result : STD_LOGIC_VECTOR (31 DOWNTO 0);
-    SIGNAL signimm : STD_LOGIC_VECTOR (31 DOWNTO 0);
+    SIGNAL signimm, zeroimm, extimm, signimmsh : STD_LOGIC_VECTOR (31 DOWNTO 0);
     SIGNAL srca, srcb : STD_LOGIC_VECTOR (31 DOWNTO 0);
 
 BEGIN
@@ -46,7 +57,30 @@ BEGIN
         PORT MAP(clk => clk, reset => reset, d => pcnext, q => pc);
     pcadder : ENTITY work.adder
         GENERIC MAP(VECTOR_SIZE => 32)
-        PORT MAP(v1 => X"00000004", v2 => pc, vr => pcnext);
+        PORT MAP(v1 => X"00000004", v2 => pc, vr => pcplus4);
+
+    -- Branch target: PC+4 + (offset << 2)
+    signimmsh <= signimm(29 DOWNTO 0) & "00";
+    pcbradd : ENTITY work.adder
+        GENERIC MAP(VECTOR_SIZE => 32)
+        PORT MAP(v1 => signimmsh, v2 => pcplus4, vr => pcbranch);
+    pcbrmux : ENTITY work.mux
+        GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
+        PORT MAP(
+            data_in => (pcbranch & pcplus4), -- (branch target & PC+4)
+            sel(0) => pcsrc,
+            data_out => pcnextbr
+        );
+
+    -- Jump target: upper 4 bits of PC+4, 26-bit address field, two zero bits
+    pcjump <= pcplus4(31 DOWNTO 28) & instr(25 DOWNTO 0) & "00";
+    pcmux : ENTITY work.mux
+        GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
+        PORT MAP(
+            data_in => (pcjump & pcnextbr), -- (jump target & PC+4 / branch target)
+            sel(0) => jump,
+            data_out => pcnext
+        );
 
     -- Register logic
     -- Read from registers or write data to a register
@@ -76,16 +110,25 @@ BEGIN
             sel(0) => memtoreg,
             data_out => result
         );
-    -- Sign extension unit
-    -- Extends a 16-bit immediate to 32 bits
+    -- Immediate extension unit
+    -- Extends a 16-bit immediate to 32 bits: sign-extended (addi, lw, sw, branches, ...)
+    -- or zero-extended (andi, ori)
     se : ENTITY work.signext PORT MAP(data_in => instr(15 DOWNTO 0), data_out => signimm);
+    zeroimm <= X"0000" & instr(15 DOWNTO 0);
+    immmux : ENTITY work.mux
+        GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
+        PORT MAP(
+            data_in => (zeroimm & signimm), -- (zero-extended & sign-extended)
+            sel(0) => zeroext,
+            data_out => extimm
+        );
 
     -- ALU control logic
     -- Determines the ALU operation based on the control signals
     srcbmux : ENTITY work.mux
         GENERIC MAP(DATA_WIDTH => 32, N_INPUTS => 2)
         PORT MAP(
-            data_in => (signimm & writedata), -- (immediate & register)
+            data_in => (extimm & writedata), -- (immediate & register)
             sel(0) => alusrc,
             data_out => srcb
         );
