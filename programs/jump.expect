@@ -1,0 +1,3 @@
+# Expected final data memory: <byte address> <value>
+00000000 00000001  # MEM[0x0] = 1
+00000004 00000004  # MEM[0x4] = 4

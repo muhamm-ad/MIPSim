@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [develop, master]
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GHDL
+        run: sudo apt-get update && sudo apt-get install -y ghdl
+      - name: GHDL version
+        run: ghdl --version
+      - name: Assembler unit tests
+        run: make test-tools
+      - name: Generated programs are up to date
+        run: |
+          make programs
+          git diff --exit-code programs/ || {
+            echo "::error::programs/*.hex / *.expect are out of date: run 'make programs' and commit"
+            exit 1
+          }
+      - name: Analyse and elaborate every module
+        run: make check
+      - name: Run testbenches and programs
+        run: make test

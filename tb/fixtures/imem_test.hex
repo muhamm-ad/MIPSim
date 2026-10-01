@@ -1,0 +1,9 @@
+# Fixture for tb_imem: exercises the program file format.
+// comments may also start with '//' or '--'
+-- ...or with dashes
+
+20020005   # addi $v0, $0, 5   (anything after the 8 digits is ignored)
+2003000c
+   2067FFF7	tabs and leading blanks are fine, hex digits are case-insensitive
+DEADBEEF
+00000000

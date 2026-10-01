@@ -24,5 +24,5 @@ END adder;
 -- Architecture of adder
 ARCHITECTURE behave OF adder IS
 BEGIN
-    vr <= v1 + v2; -- Perform addition operation
+    vr <= STD_LOGIC_VECTOR(unsigned(v1) + unsigned(v2)); -- Perform addition operation (wraps on overflow)
 END behave;
