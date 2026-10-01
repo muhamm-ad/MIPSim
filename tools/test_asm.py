@@ -78,6 +78,13 @@ class EncodingTests(unittest.TestCase):
         self.assertEqual(words(src)[3], 0x08000002)  # 0x08 >> 2
         self.assertEqual(words("j top\n" + "nop\n" * 63 + "top: nop")[0], 0x08000040)
 
+    def test_jal_and_jr(self):
+        self.assertEqual(words("jal f\nnop\nf: nop")[0], 0x0C000002)  # target 0x08 >> 2
+        self.assertEqual(words("jal top\n" + "nop\n" * 63 + "top: nop")[0], 0x0C000040)
+        self.assertEqual(words("jr $ra"), [0x03E00008])
+        self.assertEqual(words("jr $t0"), [0x01000008])
+        self.assertEqual(words("jr $26"), [0x03400008])
+
     def test_pseudo_instructions(self):
         self.assertEqual(words("nop"), [0x00000000])
         self.assertEqual(words("move $t0, $t1"), [0x01204021])  # addu $t0,$t1,$0
@@ -137,6 +144,8 @@ class ErrorTests(unittest.TestCase):
 
     def test_operand_count(self):
         self.assert_error("add $t0, $t1", "takes 3 operand", 1)
+        self.assert_error("jr", "takes 1 operand", 1)
+        self.assert_error("jr $t0, $t1", "takes 1 operand", 1)
 
     def test_immediate_range(self):
         self.assert_error("addi $t0, $0, 32768", "does not fit", 1)
@@ -152,6 +161,7 @@ class ErrorTests(unittest.TestCase):
 
     def test_undefined_and_duplicate_labels(self):
         self.assert_error("j nowhere", "undefined label", 1)
+        self.assert_error("jal nowhere", "undefined label", 1)
         self.assert_error("a: nop\na: nop", "defined twice", 2)
 
     def test_bad_memory_operand(self):

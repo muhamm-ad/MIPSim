@@ -21,7 +21,7 @@ ARCHITECTURE sim OF tb_datapath IS
     SIGNAL reset : STD_LOGIC := '1';
     SIGNAL pc, instr, writedata, aluresult, readdata : STD_LOGIC_VECTOR(31 DOWNTO 0) := (OTHERS => '0');
     SIGNAL regdst, regwrite, alusrc, memtoreg, zero : STD_LOGIC := '0';
-    SIGNAL pcsrc, jump : STD_LOGIC := '0';
+    SIGNAL pcsrc, jump, jr, link : STD_LOGIC := '0';
     SIGNAL extop : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
     SIGNAL alucontrol : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0010";
 
@@ -50,11 +50,12 @@ BEGIN
             clk => clk, reset => reset, pc => pc, instr => instr,
             regdst => regdst, regwrite => regwrite, writedata => writedata,
             alusrc => alusrc, extop => extop, alucontrol => alucontrol, aluresult => aluresult,
-            readdata => readdata, memtoreg => memtoreg, pcsrc => pcsrc, jump => jump, zero => zero);
+            readdata => readdata, memtoreg => memtoreg, pcsrc => pcsrc, jump => jump, jr => jr, link => link, zero => zero);
 
     PROCESS
         VARIABLE n : INTEGER := 0; -- number of instructions executed
         VARIABLE exp_pc : INTEGER := 0; -- address the PC must hold before the next instruction
+        VARIABLE ret_addr : INTEGER; -- return address expected in $31 after a jal
 
         -- Execute one instruction: apply instr + control word, check the
         -- combinational results, then let the clock edge commit the write-back
@@ -64,6 +65,7 @@ BEGIN
         mem_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
         want_alu : STD_LOGIC_VECTOR(31 DOWNTO 0);
         ext : STD_LOGIC_VECTOR(1 DOWNTO 0) := EXT_SIGN; psrc : STD_LOGIC := '0'; jmp : STD_LOGIC := '0';
+        lnk : STD_LOGIC := '0'; jreg : STD_LOGIC := '0';
         next_pc : INTEGER := - 1) IS
         BEGIN
             ASSERT pc = w(exp_pc) REPORT name & ": pc expected " & to_hstring(w(exp_pc)) & " got " & to_hstring(pc) SEVERITY error;
@@ -77,6 +79,8 @@ BEGIN
             extop <= ext;
             pcsrc <= psrc;
             jump <= jmp;
+            link <= lnk;
+            jr <= jreg;
             WAIT FOR 2 ns;
             ASSERT aluresult = want_alu
             REPORT name & ": aluresult expected " & to_hstring(want_alu) & " got " & to_hstring(aluresult) SEVERITY error;
@@ -158,6 +162,24 @@ BEGIN
         exec(X"08000040", "j    0x100     ", '0', '0', '0', '0', ALU_ADD, X"00000000", w(0),
         jmp => '1', next_pc => 16#100#);
         exec(X"20020001", "addi $2,$0,1   ", '0', '1', '1', '0', ALU_ADD, X"00000000", w(1)); -- executes at 0x100
+
+        -- jal: jump to 0x1F000 and write PC+4 into $31. The target's address field makes the
+        -- rd field of the instruction 15 and rt 0, so a wrong destination register would be seen.
+        ret_addr := exp_pc + 4;
+        exec(X"0C007C00", "jal  0x1F000   ", '0', '1', '0', '0', ALU_ADD, X"00000000", w(0),
+        jmp => '1', lnk => '1', next_pc => 16#1F000#);
+        -- $31 holds the return address (and not the ALU result of the jal itself)
+        exec(X"03E0D022", "sub  $26,$31,$0", '1', '1', '0', '0', ALU_SUB, X"00000000", w(ret_addr));
+        -- $15 (written earlier by the srl test) was not overwritten by the jal
+        exec(X"01E0D822", "sub  $27,$15,$0", '1', '1', '0', '0', ALU_SUB, X"00000000", X"00FFFFFF");
+        -- jr $31: the next PC is the content of $31; no register write
+        exec(X"03E00008", "jr   $31       ", '1', '0', '0', '0', ALU_ADD, X"00000000", w(ret_addr),
+        jreg => '1', next_pc => ret_addr);
+        -- execution resumes right after the jal
+        exec(X"20020002", "addi $2,$0,2   ", '0', '1', '1', '0', ALU_ADD, X"00000000", w(2));
+        -- jr through another register ($26 also holds the return address)
+        exec(X"03400008", "jr   $26       ", '1', '0', '0', '0', ALU_ADD, X"00000000", w(ret_addr),
+        jreg => '1', next_pc => ret_addr);
 
         -- Asynchronous reset in the middle of the run brings the PC back to 0
         reset <= '1';
