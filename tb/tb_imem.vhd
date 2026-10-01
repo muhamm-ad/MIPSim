@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- Testbench : imem (default built-in program)
+-- Testbench : imem (built-in demo program and program loaded from a file)
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
@@ -12,9 +12,12 @@ END tb_imem;
 
 ARCHITECTURE sim OF tb_imem IS
     SIGNAL a : STD_LOGIC_VECTOR(5 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL rd : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL rd, rd_file : STD_LOGIC_VECTOR(31 DOWNTO 0);
 BEGIN
     dut : ENTITY work.imem GENERIC MAP(ADDR_SIZE => 6) PORT MAP(a => a, rd => rd);
+    dut_file : ENTITY work.imem
+        GENERIC MAP(ADDR_SIZE => 6, INIT_FILE => "tb/fixtures/imem_test.hex")
+        PORT MAP(a => a, rd => rd_file);
 
     PROCESS
         PROCEDURE expect(i : INTEGER; want : STD_LOGIC_VECTOR(31 DOWNTO 0)) IS
@@ -34,6 +37,25 @@ BEGIN
         expect(5, X"00A42820"); -- add  $a1, $a1, $a0
         FOR i IN 6 TO 63 LOOP
             expect(i, X"00000000"); -- rest of the memory is zero (nop)
+        END LOOP;
+
+        -- Program loaded from a file (comments, blank lines, mixed case, trailing text ignored)
+        a <= STD_LOGIC_VECTOR(TO_UNSIGNED(0, 6));
+        WAIT FOR 1 ns;
+        ASSERT rd_file = X"20020005" REPORT "file[0]: " & to_hstring(rd_file) SEVERITY error;
+        a <= STD_LOGIC_VECTOR(TO_UNSIGNED(1, 6));
+        WAIT FOR 1 ns;
+        ASSERT rd_file = X"2003000C" REPORT "file[1]: " & to_hstring(rd_file) SEVERITY error;
+        a <= STD_LOGIC_VECTOR(TO_UNSIGNED(2, 6));
+        WAIT FOR 1 ns;
+        ASSERT rd_file = X"2067FFF7" REPORT "file[2]: " & to_hstring(rd_file) SEVERITY error;
+        a <= STD_LOGIC_VECTOR(TO_UNSIGNED(3, 6));
+        WAIT FOR 1 ns;
+        ASSERT rd_file = X"DEADBEEF" REPORT "file[3]: " & to_hstring(rd_file) SEVERITY error;
+        FOR i IN 4 TO 63 LOOP
+            a <= STD_LOGIC_VECTOR(TO_UNSIGNED(i, 6));
+            WAIT FOR 1 ns;
+            ASSERT rd_file = X"00000000" REPORT "file[" & INTEGER'image(i) & "] should be 0: " & to_hstring(rd_file) SEVERITY error;
         END LOOP;
 
         REPORT "tb_imem: PASS";

@@ -2,6 +2,8 @@
 -- Project : MIPSim
 -- File    : decoder.vhd
 -- Description: Single cycle control decoder.
+--              Main decoder (opcode -> control signals) + ALU decoder
+--              (ALUop, funct -> ALU control).
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;
@@ -16,6 +18,10 @@ ENTITY decoder IS
 		memwrite : OUT STD_LOGIC;
 		memtoreg : OUT STD_LOGIC;
 		regwrite : OUT STD_LOGIC;
+		branch : OUT STD_LOGIC;
+		bne : OUT STD_LOGIC;
+		jump : OUT STD_LOGIC;
+		zeroext : OUT STD_LOGIC;
 		alucontrol : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
 	);
 END ENTITY decoder;
@@ -31,6 +37,10 @@ BEGIN
 			alusrc => alusrc,
 			regdst => regdst,
 			regwrite => regwrite,
+			branch => branch,
+			bne => bne,
+			jump => jump,
+			zeroext => zeroext,
 			aluop => aluop_sig
 		);
 

@@ -1,0 +1,5 @@
+# Expected final data memory: <byte address> <value>
+00000000 00000006  # MEM[0x0] = 6
+00000004 00000037  # MEM[0x4] = 55
+00000008 0000001E  # MEM[0x8] = 30
+0000000C 00000001  # MEM[0xc] = 1
