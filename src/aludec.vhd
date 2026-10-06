@@ -6,7 +6,7 @@
 -- function field (funct) of R-type instructions into the 4-bit control signal of
 -- the ALU. The 4-bit control allows for an extended operation set.
 --
--- ALUop encoding (see Docs/Supported_Instruction.md):
+-- ALUop encoding (see docs/supported-instructions.md):
 --   000 add  (lw, sw, addi, addiu, lui)   100 or   (ori)
 --   001 and  (andi)                       101 slt  (slti)
 --   010 sub  (beq, bne)                   110 sltu (sltiu)

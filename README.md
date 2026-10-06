@@ -5,7 +5,7 @@ MIPSim is a MIPS (Microprocessor without Interlocked Pipeline Stages) processor 
 ## Features
 
 * Complete simulation of a 32-bit, single-cycle MIPS processor running programs loaded from a file.
-* 28 MIPS instructions covering arithmetic, logic, shifts, comparisons, loads/stores, conditional branches, jumps and function calls (`jal` / `jr`). See [`Docs/Supported_Instruction.md`](Docs/Supported_Instruction.md).
+* 28 MIPS instructions covering arithmetic, logic, shifts, comparisons, loads/stores, conditional branches, jumps and function calls (`jal` / `jr`). See [`docs/supported-instructions.md`](docs/supported-instructions.md).
 * Modular architecture for easy understanding and extension.
 * Self-checking testbenches for every module, and a system-level test bench that runs real programs (GCD, Fibonacci, bubble sort, recursive factorial, ...).
 * A small assembler (`tools/asm.py`) to write programs in MIPS assembly instead of hexadecimal.
@@ -20,7 +20,7 @@ MIPSim is a MIPS (Microprocessor without Interlocked Pipeline Stages) processor 
 ## Quick start
 
 ```sh
-make check                    # analyse and elaborate every module of hdl_export/
+make check                    # analyse and elaborate every module of src/
 make test                     # unit testbenches + every program of programs/
 make test-tools               # unit tests of the assembler
 make sim PROG=programs/gcd    # assemble and run one program, printing every store
@@ -39,11 +39,11 @@ tb/tb_mips.vhd:144:9:@845ns:(report note): tb_mips[programs/gcd.hex]: PASS (85 c
 
 | Path                         | Content                                                                 |
 | ---------------------------- | ----------------------------------------------------------------------- |
-| `hdl_export/`                | The VHDL design (one entity per file)                                   |
+| `src/`                | The VHDL design (one entity per file)                                   |
 | `tb/`                        | Self-checking testbenches (`tb_<module>.vhd`) and `tb/fixtures/`        |
 | `programs/`                  | Test programs: assembly source (`.s`), generated `.hex` and `.expect`   |
 | `tools/`                     | The assembler `asm.py` and its unit tests                               |
-| `Docs/`                      | Instruction set and control tables, datapath diagram (`mipsim.drawio`), MIPS Green Sheet |
+| `docs/`                      | Instruction set and control tables, datapath diagram (`mipsim.drawio`), MIPS Green Sheet |
 | `Makefile`                   | Build and test entry points                                             |
 | `.github/workflows/ci.yml`   | Continuous integration                                                  |
 
@@ -66,7 +66,7 @@ top                         processor + memories (exposes pc and the store inter
 └── dmem                    data memory, word access with byte addresses
 ```
 
-[`Docs/mipsim.drawio`](Docs/mipsim.drawio) draws the original datapath (register file, ALU, memories, R-type / `lw` / `sw` / `addi` data flow); it predates the next-PC logic (branch, jump, `jr`), the `jal` link path and the immediate-extension mux, which are documented in the header of `hdl_export/datapath.vhd`. The control signals of every instruction and the ALU encodings are tabulated in [`Docs/Supported_Instruction.md`](Docs/Supported_Instruction.md).
+[`docs/mipsim.drawio`](docs/mipsim.drawio) is the full datapath diagram (next-PC logic with branch, jump and `jr`, immediate extension, `jal` link path, control signals). It was regenerated from the VHDL structure and edits are best made in draw.io. The control signals of every instruction and the ALU encodings are tabulated in [`docs/supported-instructions.md`](docs/supported-instructions.md).
 
 `top` has three generics: `IMEM_ADDR_SIZE` (instruction memory of `2**IMEM_ADDR_SIZE` words, 6 by default), `DMEM_SIZE` (data memory size in words, 64 by default) and `PROGRAM` (path of the program file; empty selects a small built-in demo program).
 

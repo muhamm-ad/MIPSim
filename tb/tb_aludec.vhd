@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 -- Testbench : aludec
--- Checks the (ALUop, funct) -> ALU control table of Docs/Supported_Instruction.md
+-- Checks the (ALUop, funct) -> ALU control table of docs/supported-instructions.md
 --------------------------------------------------------------------------------
 
 LIBRARY IEEE;

@@ -6,7 +6,7 @@
 -- function code 'aluctl'. The size of the input and output vectors can be
 -- configured using generic parameters.
 --
--- aluctl encoding (see Docs/Supported_Instruction.md):
+-- aluctl encoding (see docs/supported-instructions.md):
 --   0000 A AND B        0100 A AND (NOT B)     1000 SLTU (unsigned A < B ? 1 : 0)
 --   0001 A OR  B        0101 A OR  (NOT B)     1001 A XOR B
 --   0010 A + B          0110 A - B             1010 B << shamt   (SLL)

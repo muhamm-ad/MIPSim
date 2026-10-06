@@ -2,7 +2,7 @@
 """Unit tests for tools/asm.py. Run with: python3 -m unittest discover -s tools -v
 
 Reference encodings below were computed by hand from the MIPS Green Sheet
-(Docs/MIPS_Green_Sheet.pdf), not with the assembler under test.
+(docs/mips-green-sheet.pdf), not with the assembler under test.
 """
 
 import os
