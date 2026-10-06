@@ -1,6 +1,6 @@
 # MIPSim build system (GHDL)
 #
-#   make check                 analyse + elaborate every module in hdl_export/
+#   make check                 analyse + elaborate every module in src/
 #   make test                  unit testbenches (tb/) + every program in programs/
 #   make test T=tb_alu         run a single unit testbench
 #   make test-tools            unit tests of the assembler (tools/test_asm.py)
@@ -14,7 +14,7 @@ GHDL      ?= ghdl
 PYTHON    ?= python3
 STD       ?= 08
 BUILD     := build
-SRC_DIR   := hdl_export
+SRC_DIR   := src
 TB_DIR    := tb
 PROG_DIR  := programs
 GHDLFLAGS := --std=$(STD) --workdir=$(BUILD)

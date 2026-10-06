@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Minimal MIPS assembler for MIPSim.
 
-Turns a MIPS assembly file into the hex program format read by hdl_export/imem.vhd
+Turns a MIPS assembly file into the hex program format read by src/imem.vhd
 (one 32-bit word per line, 8 hex digits) and, optionally, a file of expected final
 memory contents used by tb/tb_mips.vhd.
 
-Supported instructions (see Docs/Supported_Instruction.md):
+Supported instructions (see docs/supported-instructions.md):
     add addu sub subu and or xor nor slt sltu   rd, rs, rt
     sll srl sra                                 rd, rt, shamt   (shamt: 0..31)
     addi addiu slti sltiu                       rt, rs, imm     (imm: -32768..32767)

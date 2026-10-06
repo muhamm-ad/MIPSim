@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- Testbench : maindec + decoder
 -- Checks the control signals of every supported opcode against the table in
--- Docs/Supported_Instruction.md, both on the main decoder alone and through the
+-- docs/supported-instructions.md, both on the main decoder alone and through the
 -- full 'decoder' (main decoder + ALU decoder).
 --------------------------------------------------------------------------------
 
